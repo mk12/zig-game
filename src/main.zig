@@ -14,6 +14,15 @@ pub fn main() !void {
         panic("GLFW init failure\n", .{});
     }
     defer c.glfwTerminate();
+    const window = c.glfwCreateWindow(640, 480, "Furious Fowls", null, null);
+    if (window == null) {
+        panic("GLFW window failure\n", .{});
+    }
+    defer c.glfwDestroyWindow(window);
+    while (c.glfwWindowShouldClose(window) == c.GLFW_FALSE) {
+        c.glfwPollEvents();
+        std.time.sleep(30_000_000);
+    }
 }
 
 test "It works" {
