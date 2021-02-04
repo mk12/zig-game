@@ -19,6 +19,13 @@ pub fn main() !void {
         panic("GLFW window failure\n", .{});
     }
     defer c.glfwDestroyWindow(window);
+
+    var init: c.bgfx_init_t = undefined;
+    c.bgfx_init_ctor(&init);
+    if (!c.bgfx_init(&init)) {
+        panic("BGFX init failure\n", .{});
+    }
+
     while (c.glfwWindowShouldClose(window) == c.GLFW_FALSE) {
         c.glfwPollEvents();
         std.time.sleep(30_000_000);

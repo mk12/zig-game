@@ -2,7 +2,8 @@
 
 TODO
 
-clone with `--recursive` or run `git submodule update --init --recursive` after
+<!-- clone with `--recursive` or run `git submodule update --init --recursive` after -->
+./deps.sh to install glfw, bgfx
 
 ## Usage
 
@@ -23,12 +24,14 @@ zig build -Dtarget=x86_64-windows-gnu
 
 ## Dependencies
 
-glfw (submodule)
-    - cmake to build
+glfw
+bgfx (and bx)
 zig
 
 for cross compile to linux
 `brew install libx11 libxcursor libxrandr libxinerama libxi`
+or on linux itself
+`sudo apt-get install xorg-dev`
 
 ## License
 
