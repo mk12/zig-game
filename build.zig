@@ -24,8 +24,8 @@ pub fn build(b: *Builder) !void {
     exe.addIncludeDir("deps/bx/include");
     exe.addIncludeDir("deps/glfw/include");
 
-    const glfwFlags = [_][]const u8{"-std=c99"};
-    const bxFlags = [_][]const u8{
+    const glfw_flags = [_][]const u8{"-std=c99"};
+    const bx_flags = [_][]const u8{
         "-std=c++14",
         "-ffast-math",
         "-fno-exceptions",
@@ -34,7 +34,7 @@ pub fn build(b: *Builder) !void {
         "-fno-delete-null-pointer-checks",
     };
 
-    const glfwFiles = [_][]const u8{
+    const glfw_files = [_][]const u8{
         "deps/glfw/src/context.c",
         "deps/glfw/src/egl_context.c",
         "deps/glfw/src/init.c",
@@ -44,7 +44,7 @@ pub fn build(b: *Builder) !void {
         "deps/glfw/src/vulkan.c",
         "deps/glfw/src/window.c",
     };
-    const bxFiles = [_][]const u8{
+    const bx_files = [_][]const u8{
         "deps/bx/src/allocator.cpp",
         "deps/bx/src/bx.cpp",
         "deps/bx/src/commandline.cpp",
@@ -67,7 +67,7 @@ pub fn build(b: *Builder) !void {
         "deps/bx/src/timer.cpp",
         "deps/bx/src/url.cpp",
     };
-    const bimgFiles = [_][]const u8{
+    const bimg_files = [_][]const u8{
         "deps/bimg/3rdparty/astc-codec/src/decoder/astc_file.cc",
         "deps/bimg/3rdparty/astc-codec/src/decoder/codec.cc",
         "deps/bimg/3rdparty/astc-codec/src/decoder/endpoint_codec.cc",
@@ -82,7 +82,7 @@ pub fn build(b: *Builder) !void {
         "deps/bimg/src/image_gnf.cpp",
         "deps/bimg/src/image.cpp",
     };
-    const bgfxFiles = [_][]const u8{
+    const bgfx_files = [_][]const u8{
         "deps/bgfx/src/bgfx.cpp",
         "deps/bgfx/src/debug_renderdoc.cpp",
         "deps/bgfx/src/dxgi.cpp",
@@ -108,7 +108,7 @@ pub fn build(b: *Builder) !void {
         "deps/bgfx/src/vertexlayout.cpp",
     };
 
-    exe.addCSourceFiles(&bxFiles ++ &bimgFiles, &bxFlags);
+    exe.addCSourceFiles(&bx_files ++ &bimg_files, &bx_flags);
 
     switch (target.getOsTag()) {
         .macos => {
@@ -119,13 +119,13 @@ pub fn build(b: *Builder) !void {
             exe.linkFramework("IOKit");
             exe.linkFramework("QuartzCore");
             exe.linkFramework("Metal");
-            const cocoaFlag = [_][]const u8{"-D_GLFW_COCOA"};
+            const cocoa_flag = [_][]const u8{"-D_GLFW_COCOA"};
             exe.addCSourceFiles(
-                glfwFiles ++ &[_][]const u8{
+                glfw_files ++ &[_][]const u8{
                     "deps/glfw/src/cocoa_time.c",
                     "deps/glfw/src/posix_thread.c",
                 },
-                &glfwFlags ++ &cocoaFlag,
+                &glfw_flags ++ &cocoa_flag,
             );
             try addObjectiveCFiles(
                 exe,
@@ -141,16 +141,16 @@ pub fn build(b: *Builder) !void {
                     "deps/glfw/src/cocoa_window.m",
                     "deps/glfw/src/nsgl_context.m",
                 },
-                &glfwFlags ++ &cocoaFlag,
+                &glfw_flags ++ &cocoa_flag,
             );
-            const metalFlag = [_][]const u8{"-DBGFX_CONFIG_RENDERER_METAL=1"};
-            exe.addCSourceFiles(&bgfxFiles, &bxFlags ++ &metalFlag);
+            const metal_flag = [_][]const u8{"-DBGFX_CONFIG_RENDERER_METAL=1"};
+            exe.addCSourceFiles(&bgfx_files, &bx_flags ++ &metal_flag);
             try addObjectiveCFiles(
                 exe,
                 &[_][]const u8{
                     "deps/bgfx/src/renderer_mtl.mm",
                 },
-                &bxFlags ++ &metalFlag,
+                &bx_flags ++ &metal_flag,
             );
         },
         .windows => {
@@ -161,7 +161,7 @@ pub fn build(b: *Builder) !void {
             }
             exe.linkSystemLibrary("gdi32");
             exe.addCSourceFiles(
-                glfwFiles ++ &[_][]const u8{
+                glfw_files ++ &[_][]const u8{
                     "deps/glfw/src/wgl_context.c",
                     "deps/glfw/src/win32_init.c",
                     "deps/glfw/src/win32_joystick.c",
@@ -170,11 +170,11 @@ pub fn build(b: *Builder) !void {
                     "deps/glfw/src/win32_time.c",
                     "deps/glfw/src/win32_window.c",
                 },
-                glfwFlags ++ &[_][]const u8{"-D_GLFW_WIN32"},
+                glfw_flags ++ &[_][]const u8{"-D_GLFW_WIN32"},
             );
             exe.addCSourceFiles(
-                &bgfxFiles,
-                &bxFlags ++ &[_][]const u8{"-DBGFX_CONFIG_RENDERER_DIRECT3D12=1"},
+                &bgfx_files,
+                &bx_flags ++ &[_][]const u8{"-DBGFX_CONFIG_RENDERER_DIRECT3D12=1"},
             );
         },
         .linux => {
@@ -184,7 +184,7 @@ pub fn build(b: *Builder) !void {
             exe.linkSystemLibrary("xinerama");
             exe.linkSystemLibrary("xrandr");
             exe.addCSourceFiles(
-                glfwFiles ++ &[_][]const u8{
+                glfw_files ++ &[_][]const u8{
                     "deps/glfw/src/glx_context.c",
                     "deps/glfw/src/linux_joystick.c",
                     "deps/glfw/src/posix_thread.c",
@@ -194,7 +194,7 @@ pub fn build(b: *Builder) !void {
                     "deps/glfw/src/x11_window.c",
                     "deps/glfw/src/xkb_unicode.c",
                 },
-                glfwFlags ++ &[_][]const u8{"-D_GLFW_X11"},
+                glfw_flags ++ &[_][]const u8{"-D_GLFW_X11"},
             );
         },
         else => |tag| panic("unsupported OS {}", .{tag}),
@@ -222,12 +222,12 @@ fn addObjectiveCFiles(
     flags: []const []const u8,
 ) !void {
     const b = exe.builder;
-    const objectDir = try std.fs.path.join(
+    const object_dir = try std.fs.path.join(
         b.allocator,
         &[_][]const u8{ b.build_root, b.cache_root, "objc" },
     );
     const cwd = std.fs.cwd();
-    try cwd.makePath(objectDir);
+    try cwd.makePath(object_dir);
     var argv = std.ArrayList([]const u8).init(b.allocator);
     defer argv.deinit();
     try argv.appendSlice(&[_][]const u8{ "clang", "-c", "", "-o", "" });
@@ -246,10 +246,9 @@ fn addObjectiveCFiles(
         }
     }
     try argv.appendSlice(flags);
-    var buf: [128]u8 = undefined;
     for (files) |file| {
         const object = b.fmt("{s}{s}{s}.o", .{
-            objectDir,
+            object_dir,
             std.fs.path.sep_str,
             // All .m and .mm files in this project have unique filenames.
             std.fs.path.basename(file),
