@@ -14,6 +14,8 @@ pub fn build(b: *Builder) !void {
     exe.setBuildMode(mode);
     exe.linkSystemLibrary("c");
     exe.linkSystemLibrary("c++");
+    exe.addIncludeDir("src");
+    exe.addIncludeDir("deps/bgfx/3rdparty/renderdoc");
     exe.addIncludeDir("deps/bgfx/include");
     exe.addIncludeDir("deps/bimg/3rdparty/astc-codec");
     exe.addIncludeDir("deps/bimg/3rdparty/astc-codec/include");
@@ -22,15 +24,17 @@ pub fn build(b: *Builder) !void {
     exe.addIncludeDir("deps/bx/include");
     exe.addIncludeDir("deps/glfw/include");
 
-    const glfwCommonFlags = [_][]const u8{"-std=c99"};
-    const bxCommonFlags = [_][]const u8{
+    const glfwFlags = [_][]const u8{"-std=c99"};
+    const bxFlags = [_][]const u8{
         "-std=c++14",
         "-ffast-math",
         "-fno-exceptions",
         "-fno-rtti",
+        // Needed to avoid UB in bx/include/tinystl/buffer.h.
+        "-fno-delete-null-pointer-checks",
     };
 
-    const glfwCommonFiles = [_][]const u8{
+    const glfwFiles = [_][]const u8{
         "deps/glfw/src/context.c",
         "deps/glfw/src/egl_context.c",
         "deps/glfw/src/init.c",
@@ -40,7 +44,7 @@ pub fn build(b: *Builder) !void {
         "deps/glfw/src/vulkan.c",
         "deps/glfw/src/window.c",
     };
-    const bxCommonFiles = [_][]const u8{
+    const bxFiles = [_][]const u8{
         "deps/bx/src/allocator.cpp",
         "deps/bx/src/bx.cpp",
         "deps/bx/src/commandline.cpp",
@@ -63,7 +67,22 @@ pub fn build(b: *Builder) !void {
         "deps/bx/src/timer.cpp",
         "deps/bx/src/url.cpp",
     };
-    const bgfxCommonFiles = [_][]const u8{
+    const bimgFiles = [_][]const u8{
+        "deps/bimg/3rdparty/astc-codec/src/decoder/astc_file.cc",
+        "deps/bimg/3rdparty/astc-codec/src/decoder/codec.cc",
+        "deps/bimg/3rdparty/astc-codec/src/decoder/endpoint_codec.cc",
+        "deps/bimg/3rdparty/astc-codec/src/decoder/footprint.cc",
+        "deps/bimg/3rdparty/astc-codec/src/decoder/integer_sequence_codec.cc",
+        "deps/bimg/3rdparty/astc-codec/src/decoder/intermediate_astc_block.cc",
+        "deps/bimg/3rdparty/astc-codec/src/decoder/logical_astc_block.cc",
+        "deps/bimg/3rdparty/astc-codec/src/decoder/partition.cc",
+        "deps/bimg/3rdparty/astc-codec/src/decoder/physical_astc_block.cc",
+        "deps/bimg/3rdparty/astc-codec/src/decoder/quantization.cc",
+        "deps/bimg/3rdparty/astc-codec/src/decoder/weight_infill.cc",
+        "deps/bimg/src/image_gnf.cpp",
+        "deps/bimg/src/image.cpp",
+    };
+    const bgfxFiles = [_][]const u8{
         "deps/bgfx/src/bgfx.cpp",
         "deps/bgfx/src/debug_renderdoc.cpp",
         "deps/bgfx/src/dxgi.cpp",
@@ -88,67 +107,30 @@ pub fn build(b: *Builder) !void {
         "deps/bgfx/src/topology.cpp",
         "deps/bgfx/src/vertexlayout.cpp",
     };
-    const bimgCommonFiles = [_][]const u8 {
-        "deps/bimg/3rdparty/astc-codec/src/decoder/astc_file.cc",
-        "deps/bimg/3rdparty/astc-codec/src/decoder/codec.cc",
-        "deps/bimg/3rdparty/astc-codec/src/decoder/endpoint_codec.cc",
-        "deps/bimg/3rdparty/astc-codec/src/decoder/footprint.cc",
-        "deps/bimg/3rdparty/astc-codec/src/decoder/integer_sequence_codec.cc",
-        "deps/bimg/3rdparty/astc-codec/src/decoder/intermediate_astc_block.cc",
-        "deps/bimg/3rdparty/astc-codec/src/decoder/logical_astc_block.cc",
-        "deps/bimg/3rdparty/astc-codec/src/decoder/partition.cc",
-        "deps/bimg/3rdparty/astc-codec/src/decoder/physical_astc_block.cc",
-        "deps/bimg/3rdparty/astc-codec/src/decoder/quantization.cc",
-        "deps/bimg/3rdparty/astc-codec/src/decoder/weight_infill.cc",
-        "deps/bimg/src/image_gnf.cpp",
-        "deps/bimg/src/image.cpp",
-    };
 
-    addCFiles(exe, &bxCommonFiles, &bxCommonFlags);
-    addCFiles(exe, &bimgCommonFiles, &bxCommonFlags);
+    exe.addCSourceFiles(&bxFiles ++ &bimgFiles, &bxFlags);
 
     switch (target.getOsTag()) {
-        .linux => {
-            exe.linkSystemLibrary("x11");
-            exe.linkSystemLibrary("xcursor");
-            exe.linkSystemLibrary("xi");
-            exe.linkSystemLibrary("xinerama");
-            exe.linkSystemLibrary("xrandr");
-            addCFiles(
-                exe,
-                glfwCommonFiles ++ &[_][]const u8{
-                    "deps/glfw/src/glx_context.c",
-                    "deps/glfw/src/linux_joystick.c",
-                    "deps/glfw/src/posix_thread.c",
-                    "deps/glfw/src/posix_time.c",
-                    "deps/glfw/src/x11_init.c",
-                    "deps/glfw/src/x11_monitor.c",
-                    "deps/glfw/src/x11_window.c",
-                    "deps/glfw/src/xkb_unicode.c",
-                },
-                glfwCommonFlags ++ &[_][]const u8{"-D_GLFW_X11"},
-            );
-        },
         .macos => {
-            // Prior to https://github.com/ziglang/zig/pull/7715 this has no
-            // effect on the child processes, and must be set manually.
             try b.env_map.set("ZIG_SYSTEM_LINKER_HACK", "1");
             exe.addIncludeDir("deps/bx/include/compat/osx");
-            exe.addFrameworkDir(try getMacFrameworksDir(b));
             exe.linkFramework("CoreFoundation");
             exe.linkFramework("Cocoa");
             exe.linkFramework("IOKit");
             exe.linkFramework("QuartzCore");
             exe.linkFramework("Metal");
-            // exe.linkFramework("MetalKit");
             const cocoaFlag = [_][]const u8{"-D_GLFW_COCOA"};
-            addCFiles(
-                exe,
-                glfwCommonFiles ++ &[_][]const u8{
+            exe.addCSourceFiles(
+                glfwFiles ++ &[_][]const u8{
                     "deps/glfw/src/cocoa_time.c",
                     "deps/glfw/src/posix_thread.c",
                 },
-                &glfwCommonFlags ++ &cocoaFlag,
+                &glfwFlags ++ &cocoaFlag,
+            );
+            try addObjectiveCFiles(
+                exe,
+                &[_][]const u8{"src/metal.m"},
+                &[_][]const u8{},
             );
             try addObjectiveCFiles(
                 exe,
@@ -159,29 +141,27 @@ pub fn build(b: *Builder) !void {
                     "deps/glfw/src/cocoa_window.m",
                     "deps/glfw/src/nsgl_context.m",
                 },
-                &glfwCommonFlags ++ &cocoaFlag,
+                &glfwFlags ++ &cocoaFlag,
             );
             const metalFlag = [_][]const u8{"-DBGFX_CONFIG_RENDERER_METAL=1"};
-            addCFiles(
-                exe,
-                &bgfxCommonFiles,
-                &bxCommonFlags ++ &metalFlag,
-            );
+            exe.addCSourceFiles(&bgfxFiles, &bxFlags ++ &metalFlag);
             try addObjectiveCFiles(
                 exe,
                 &[_][]const u8{
-                    "deps/bgfx/src/glcontext_eagl.mm",
-                    "deps/bgfx/src/glcontext_nsgl.mm",
                     "deps/bgfx/src/renderer_mtl.mm",
                 },
-                &bxCommonFlags ++ &metalFlag,
+                &bxFlags ++ &metalFlag,
             );
         },
         .windows => {
+            if (target.abi != null and target.abi.?.isGnu()) {
+                exe.addIncludeDir("deps/bx/include/compat/mingw");
+            } else {
+                exe.addIncludeDir("deps/bx/include/compat/msvc");
+            }
             exe.linkSystemLibrary("gdi32");
-            addCFiles(
-                exe,
-                glfwCommonFiles ++ &[_][]const u8{
+            exe.addCSourceFiles(
+                glfwFiles ++ &[_][]const u8{
                     "deps/glfw/src/wgl_context.c",
                     "deps/glfw/src/win32_init.c",
                     "deps/glfw/src/win32_joystick.c",
@@ -190,7 +170,31 @@ pub fn build(b: *Builder) !void {
                     "deps/glfw/src/win32_time.c",
                     "deps/glfw/src/win32_window.c",
                 },
-                glfwCommonFlags ++ &[_][]const u8{"-D_GLFW_WIN32"},
+                glfwFlags ++ &[_][]const u8{"-D_GLFW_WIN32"},
+            );
+            exe.addCSourceFiles(
+                &bgfxFiles,
+                &bxFlags ++ &[_][]const u8{"-DBGFX_CONFIG_RENDERER_DIRECT3D12=1"},
+            );
+        },
+        .linux => {
+            exe.linkSystemLibrary("x11");
+            exe.linkSystemLibrary("xcursor");
+            exe.linkSystemLibrary("xi");
+            exe.linkSystemLibrary("xinerama");
+            exe.linkSystemLibrary("xrandr");
+            exe.addCSourceFiles(
+                glfwFiles ++ &[_][]const u8{
+                    "deps/glfw/src/glx_context.c",
+                    "deps/glfw/src/linux_joystick.c",
+                    "deps/glfw/src/posix_thread.c",
+                    "deps/glfw/src/posix_time.c",
+                    "deps/glfw/src/x11_init.c",
+                    "deps/glfw/src/x11_monitor.c",
+                    "deps/glfw/src/x11_window.c",
+                    "deps/glfw/src/xkb_unicode.c",
+                },
+                glfwFlags ++ &[_][]const u8{"-D_GLFW_X11"},
             );
         },
         else => |tag| panic("unsupported OS {}", .{tag}),
@@ -212,40 +216,26 @@ pub fn build(b: *Builder) !void {
     run_step.dependOn(&run.step);
 }
 
-// https://github.com/ziglang/zig/issues/2208
-fn getMacFrameworksDir(b: *Builder) ![]u8 {
-    const sdk = try b.exec(&[_][]const u8{ "xcrun", "-show-sdk-path" });
-    const parts = &[_][]const u8{
-        std.mem.trimRight(u8, sdk, "\n"),
-        "/System/Library/Frameworks",
-    };
-    return std.mem.concat(b.allocator, u8, parts);
-}
-
-const opt_flags = [_][]const u8{ "-O3", "-DNDEBUG" };
-
-fn addCFiles(
-    exe: *std.build.LibExeObjStep,
-    files: []const []const u8,
-    comptime flags: []const []const u8,
-) void {
-    const finalFlags = flags ++ opt_flags;
-    for (files) |file| {
-        exe.addCSourceFile(file, finalFlags);
-    }
-}
-
 fn addObjectiveCFiles(
     exe: *std.build.LibExeObjStep,
     files: []const []const u8,
     flags: []const []const u8,
 ) !void {
-    const cwd = std.fs.cwd();
-    var argv = std.ArrayList([]const u8).init(exe.builder.allocator);
-    defer argv.deinit();
-    try argv.appendSlice(
-        &[_][]const u8{ "clang", "-c", "", "-o", "" } ++ opt_flags,
+    const b = exe.builder;
+    const objectDir = try std.fs.path.join(
+        b.allocator,
+        &[_][]const u8{ b.build_root, b.cache_root, "objc" },
     );
+    const cwd = std.fs.cwd();
+    try cwd.makePath(objectDir);
+    var argv = std.ArrayList([]const u8).init(b.allocator);
+    defer argv.deinit();
+    try argv.appendSlice(&[_][]const u8{ "clang", "-c", "", "-o", "" });
+    if (exe.build_mode == .Debug) {
+        try argv.appendSlice(&[_][]const u8{ "-Og", "-g" });
+    } else {
+        try argv.appendSlice(&[_][]const u8{ "-O2", "-DNDEBUG" });
+    }
     for (exe.include_dirs.items) |dir| {
         switch (dir) {
             .RawPath => |path| {
@@ -256,16 +246,21 @@ fn addObjectiveCFiles(
         }
     }
     try argv.appendSlice(flags);
-    var buf: [64]u8 = undefined;
+    var buf: [128]u8 = undefined;
     for (files) |file| {
-        const object = try std.fmt.bufPrint(&buf, "{}.o", .{file});
+        const object = b.fmt("{s}{s}{s}.o", .{
+            objectDir,
+            std.fs.path.sep_str,
+            // All .m and .mm files in this project have unique filenames.
+            std.fs.path.basename(file),
+        });
         exe.addObjectFile(object);
         // Only build once. This code shouldn't be changing.
         cwd.access(object, .{}) catch |err| switch (err) {
             std.os.AccessError.FileNotFound => {
                 argv.items[2] = file;
                 argv.items[4] = object;
-                const cmd = exe.builder.addSystemCommand(argv.items);
+                const cmd = b.addSystemCommand(argv.items);
                 exe.step.dependOn(&cmd.step);
             },
             else => return err,

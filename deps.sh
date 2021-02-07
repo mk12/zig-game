@@ -46,21 +46,19 @@ download_glfw() {
     mv glfw{-$glfw_ref,}
 }
 
-download_bx() {
-    # curl -L "$bgfx_url"
-    cat bgfx.tar.gz | tar xvz bgfx-$bgfx_ref/{LICENSE,include,src}
+download_bgfx() {
+    curl -L "$bgfx_url" \
+        | tar xvz bgfx-$bgfx_ref/{LICENSE,include,src,3rdparty/renderdoc}
     mv bgfx{-$bgfx_ref,}
 }
 
 download_bx() {
-    # curl -L "$bx_url"
-    cat bx.tar.gz | tar xvz bx-$bx_ref/{LICENSE,include,src}
+    curl -L "$bx_url" | tar xvz bx-$bx_ref/{LICENSE,include,src,3rdparty}
     mv bx{-$bx_ref,}
 }
 
 download_bimg() {
-    # curl -L "$bimg_url"
-    cat bimg.tar.gz | tar xvz bimg-$bimg_ref/{LICENSE,include,src}
+    curl -L "$bimg_url" | tar xvz bimg-$bimg_ref/{LICENSE,include,src,3rdparty}
     mv bimg{-$bimg_ref,}
 }
 
