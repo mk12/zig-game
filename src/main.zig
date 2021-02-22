@@ -8,10 +8,15 @@ const window_width = 800;
 const window_height = 600;
 const window_title = "Furious Fowls";
 
-// GLFW error callback.
-fn errorCallback(err: c_int, description: [*c]const u8) callconv(.C) void {
-    panic("Error: {}\n", .{@as([*:0]const u8, description)});
-}
+var mouse_x: f64 = 0;
+var mouse_y: f64 = 0;
+
+const PosColorVertex = struct {
+    x: f64,
+    y: f64,
+    z: f64,
+    abgr: u32,
+};
 
 pub fn main() !void {
     // Set up GLFW and the window.
@@ -28,6 +33,9 @@ pub fn main() !void {
     }
     defer c.glfwDestroyWindow(window);
 
+    // Set up GLFW event callbacks.
+    _ = c.glfwSetCursorPosCallback(window, cursorPositionCallback);
+
     // Set up BGFX and the renderer.
     const platform_data = c.getPlatformData(window);
     c.bgfx_set_platform_data(&platform_data);
@@ -38,13 +46,17 @@ pub fn main() !void {
     }
     defer c.bgfx_shutdown();
     c.bgfx_reset(window_width, window_height, c.BGFX_RESET_VSYNC, init.resolution.format);
-    c.bgfx_set_debug(c.BGFX_DEBUG_TEXT);
-    c.bgfx_set_view_clear(0, c.BGFX_CLEAR_COLOR | c.BGFX_CLEAR_DEPTH, 0x303030ff, 1.0, 0);
+    // c.bgfx_set_debug(c.BGFX_DEBUG_TEXT); // | c.BGFX_DEBUG_STATS);
+    c.bgfx_set_view_clear(0, c.BGFX_CLEAR_COLOR | c.BGFX_CLEAR_DEPTH, 0xedededff, 1.0, 0);
     c.bgfx_set_view_rect(0, 0, 0, window_width, window_height);
 
-    var i: i32 = 0;
+    // var frame: i32 = 0;
+    var timer = try std.time.Timer.start();
+    timer.reset();
     while (c.glfwWindowShouldClose(window) == c.GLFW_FALSE) {
-        c.glfwWaitEventsTimeout(0.1);
+        // c.glfwWaitEventsTimeout(0.016);
+        c.glfwPollEvents();
+        
 
         // set view 0 default viewport.
         c.bgfx_set_view_rect(0, 0, 0, window_width, window_height);
@@ -56,20 +68,37 @@ pub fn main() !void {
         c.bgfx_encoder_end(encoder);
 
         // use debug font to print information about this example.
-        c.bgfx_dbg_text_clear(0, false);
-        c.bgfx_dbg_text_printf(0, 1, 0x0f, "color can be changed with ansi \x1b[9;me\x1b[10;ms\x1b[11;mc\x1b[12;ma\x1b[13;mp\x1b[14;me\x1b[0m code too.");
-        c.bgfx_dbg_text_printf(80, 1, 0x0f, "\x1b[;0m    \x1b[;1m    \x1b[; 2m    \x1b[; 3m    \x1b[; 4m    \x1b[; 5m    \x1b[; 6m    \x1b[; 7m    \x1b[0m");
-        c.bgfx_dbg_text_printf(80, 2, 0x0f, "\x1b[;8m    \x1b[;9m    \x1b[;10m    \x1b[;11m    \x1b[;12m    \x1b[;13m    \x1b[;14m    \x1b[;15m    \x1b[0m");
-        c.bgfx_dbg_text_printf(0, 3, 0x1f, "bgfx/examples/25-c99");
-        var buf: [128]u8 = undefined;
-        const str = std.fmt.bufPrintZ(&buf, "description: initialization and debug text with c99 api. Frame: {}", .{i}) catch unreachable;
-        c.bgfx_dbg_text_printf(0, 4, 0x3f, str);
-        i += 1;
+        // c.bgfx_dbg_text_clear(0, false);
+        // var buf: [128]u8 = undefined;
+        // const str = std.fmt.bufPrintZ(
+        //     &buf,
+        //     "Frame: {}, x: {}, y: {}",
+        //     .{ frame, @floatToInt(u32, mouse_x), @floatToInt(u32, mouse_y) },
+        // ) catch unreachable;
+        // var y = @floatToInt(u16, mouse_y) / 10;
+        // if (y < 0) y = 0;
+        // if (y > 30) y = 30;
+        // c.bgfx_dbg_text_printf(3, y, 0x3f, str);
+        // frame += 1;
 
         // advance to next frame. rendering thread will be kicked to
         // process submitted rendering primitives.
         _ = c.bgfx_frame(false);
+
+        // const gap = 16_666_667 - timer.lap();
+        const dt = timer.lap();
+        const target = 16_666_667;
+        if (dt < target) std.time.sleep(target - dt);
     }
+}
+
+fn errorCallback(err: c_int, description: [*c]const u8) callconv(.C) void {
+    panic("Error: {}\n", .{@as([*:0]const u8, description)});
+}
+
+fn cursorPositionCallback(window: ?*c.GLFWwindow, x: f64, y: f64) callconv(.C) void {
+    mouse_x = x;
+    mouse_y = y;
 }
 
 test "It works" {
