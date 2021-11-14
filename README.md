@@ -1,6 +1,8 @@
-# Furious Fowls
+# Zig game
 
-TODO
+WIP game in Zig.
+
+Was using bgfx at first, now Sokol instead.
 
 <!-- clone with `--recursive` or run `git submodule update --init --recursive` after -->
 ./deps.sh to install glfw, bgfx
